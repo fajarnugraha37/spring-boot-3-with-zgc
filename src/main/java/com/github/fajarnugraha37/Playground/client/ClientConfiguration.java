@@ -2,6 +2,7 @@ package com.github.fajarnugraha37.Playground.client;
 
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import retrofit2.Retrofit;
@@ -103,6 +104,7 @@ public class ClientConfiguration {
                 }
             }
 
+            @NotNull
             @Override
             public List<Cookie> loadForRequest(HttpUrl url) {
                 // Load cookies from file
