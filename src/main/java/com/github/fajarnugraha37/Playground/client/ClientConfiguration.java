@@ -8,6 +8,8 @@ import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 
@@ -31,17 +33,20 @@ public class ClientConfiguration {
     }
 
     @Bean
-    public OkHttpClient httpClient(Dispatcher dispatcher, ConnectionPool connectionPool, Cache cache) {
+    public OkHttpClient httpClient(Dispatcher dispatcher,
+                                   ConnectionPool connectionPool,
+                                   Cache cache,
+                                   CookieJar cookieJar) {
         var client = new okhttp3.OkHttpClient.Builder()
                 .dispatcher(dispatcher)
                 .connectionPool(connectionPool)
+                .cookieJar(cookieJar)
                 .cache(cache)
                 .dns(hostname -> Dns.SYSTEM.lookup(hostname)) // override if needed
                 .callTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
-                .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                .retryOnConnectionFailure(true)
+                .connectTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
+                .writeTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
                 .addInterceptor(chain -> {
                     var request = chain.request();
                     // Add any custom headers or logging here if needed
@@ -59,8 +64,8 @@ public class ClientConfiguration {
     @Bean
     public Dispatcher dispatcher() {
         var dispatcher = new Dispatcher();
-        dispatcher.setMaxRequests(128);
-        dispatcher.setMaxRequestsPerHost(128);
+        dispatcher.setMaxRequests(256);
+        dispatcher.setMaxRequestsPerHost(256);
 
         return dispatcher;
     }
@@ -77,5 +82,47 @@ public class ClientConfiguration {
         var cacheSize = 10 * 1024 * 1024; // 10 MB
 
         return new Cache(cacheDir, cacheSize);
+    }
+
+    @Bean
+    public CookieJar cookieJar() {
+        return new CookieJar() {
+            private final File cookieDir = new File("cookies");
+
+            @Override
+            public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
+                // Persist cookies to file
+                try {
+                    if (!cookieDir.exists()) cookieDir.mkdirs();
+                    var file = new File(cookieDir, url.host() + ".cookies");
+                    try (var out = new java.io.ObjectOutputStream(new java.io.FileOutputStream(file))) {
+                        out.writeObject(new ArrayList<>(cookies));
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to save cookies", e);
+                }
+            }
+
+            @Override
+            public List<Cookie> loadForRequest(HttpUrl url) {
+                // Load cookies from file
+                var file = new File(cookieDir, url.host() + ".cookies");
+                if (file.exists()) {
+                    try (var in = new java.io.ObjectInputStream(new java.io.FileInputStream(file))) {
+                        var obj = in.readObject();
+                        if (obj instanceof List) {
+                            @SuppressWarnings("unchecked")
+                            var cookies = (List<Cookie>) obj;
+                            log.info("Loaded {} cookies for {}", cookies.size(), url.host());
+                            return cookies;
+                        }
+                    } catch (Exception e) {
+                        log.error("Failed to load cookies", e);
+                    }
+                }
+
+                return new ArrayList<>();
+            }
+        };
     }
 }
