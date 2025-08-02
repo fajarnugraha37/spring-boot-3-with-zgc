@@ -1,0 +1,74 @@
+services:
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+      - "9010:9010" # JMX for VisualVM
+    environment:
+      # Constant hit
+      # -XX:MaxRAMPercentage=50.0
+      # -XX:MinRAMPercentage=25.0
+      # -XX:ZCollectionInterval=2
+      # -XX:ZAllocationSpikeTolerance=2
+      # Long running
+      # -XX:MaxRAMPercentage=80.0
+      # -XX:MinRAMPercentage=50.0
+      # -XX:ZCollectionInterval=5
+      # -XX:ZAllocationSpikeTolerance=5
+      # Rare burst
+      # -XX:MaxRAMPercentage=90.0
+      # -XX:MinRAMPercentage=20.0
+      # -XX:ZCollectionInterval=10
+      # -XX:ZAllocationSpikeTolerance=10
+      # -XX:+ZGenerational
+      JAVA_OPTS: |
+        -XX:+UseZGC 
+        -XX:MaxRAMPercentage=90.0 
+        -XX:MinRAMPercentage=5.0
+        -XX:ZCollectionInterval=1
+        -XX:ZAllocationSpikeTolerance=2
+        -XX:+ZProactive
+        -XX:+ZUncommit
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '1.0'
+#          memory: '512M'
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # To run:
+  # docker compose run k6 run /scripts/constant-hit.js
+  # docker compose run k6 run /scripts/long-running.js
+  # docker compose run k6 run /scripts/rare-burst.js
+  k6:
+    image: grafana/k6:1.1.0
+    depends_on:
+      - app
+    volumes:
+      - ./k6:/scripts
+
+  prometheus:
+    image: prom/prometheus:v2.21.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+volumes:
+  grafana-data:
