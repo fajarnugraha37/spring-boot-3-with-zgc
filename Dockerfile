@@ -23,8 +23,7 @@ ENV JAVA_OPTS="-XX:+UseZGC -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=25.0"
 
 ENV JAVA_OPTS_DEFAULT="-XX:+UseContainerSupport \
 -Djava.security.egd=file:/dev/./urandom \
--XX:+ExitOnOutOfMemoryError \
--XX:+AlwaysPreTouch"
+-XX:+ExitOnOutOfMemoryError"
 
 ENV JMX_OPTS="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9010 \
 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false \

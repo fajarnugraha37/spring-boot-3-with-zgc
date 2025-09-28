@@ -22,19 +22,41 @@ services:
       # -XX:ZCollectionInterval=10
       # -XX:ZAllocationSpikeTolerance=10
       # -XX:+ZGenerational
+      # JAVA_OPTS: |
+      #   -XX:+UseZGC 
+      #   -XX:MaxRAMPercentage=90.0 
+      #   -XX:MinRAMPercentage=5.0
+      #   -XX:ZCollectionInterval=1
+      #   -XX:ZAllocationSpikeTolerance=2
+      #   -XX:+ZProactive
+      #   -XX:+ZUncommit
       JAVA_OPTS: |
-        -XX:+UseZGC 
-        -XX:MaxRAMPercentage=90.0 
-        -XX:MinRAMPercentage=5.0
-        -XX:ZCollectionInterval=1
-        -XX:ZAllocationSpikeTolerance=2
-        -XX:+ZProactive
-        -XX:+ZUncommit
-#    deploy:
-#      resources:
-#        limits:
-#          cpus: '1.0'
-#          memory: '512M'
+        -XX:+UseG1GC
+        -XX:MaxGCPauseMillis=100
+        -XX:InitiatingHeapOccupancyPercent=32
+        -XX:G1ReservePercent=22
+        -XX:G1HeapWastePercent=8
+        -XX:G1NewSizePercent=20
+        -XX:G1MaxNewSizePercent=55
+        -XX:MaxTenuringThreshold=8
+        -XX:G1MixedGCLiveThresholdPercent=85
+        -XX:G1MixedGCCountTarget=8
+        -XX:G1OldCSetRegionThresholdPercent=10
+
+        -XX:+UnlockExperimentalVMOptions
+        -XX:G1PeriodicGCInterval=300000
+        -XX:G1PeriodicGCSystemLoadThreshold=99
+
+        -XX:+UseStringDeduplication
+        -Xlog:gc*:stdout:uptime,level,tags
+        
+        -XX:InitialRAMPercentage=55
+        -XX:MaxRAMPercentage=55
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: '512M'
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
       interval: 30s
